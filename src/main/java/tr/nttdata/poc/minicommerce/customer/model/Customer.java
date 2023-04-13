@@ -1,13 +1,16 @@
 package tr.nttdata.poc.minicommerce.customer.model;
 
-import java.io.Serializable;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.util.Date;
+import java.io.*;
 
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.*;
 
 @Data
@@ -26,5 +29,9 @@ public class Customer implements Serializable {
     private String email;
     @NotBlank(message = "Name is mandatory")
     private String password;
+    @DateTimeFormat
+    private Date dateOfBirth;
+    @Pattern(regexp = "^0905\\d{9}$", message = "Invalid Turkish phone number")
+    private String mobile;
 
 }
