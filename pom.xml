@@ -6,13 +6,13 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.0.5</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>tr.nttdata.poc.minicommerce.customer</groupId>
-	<artifactId>Customer-Service</artifactId>
+	<artifactId>customerservice</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>Customer-Service</name>
-	<description>Order Service MiniCommerce</description>
+	<name>customerservice</name>
+	<description>Customer Service MiniCommerce</description>
 	<properties>
 		<java.version>17</java.version>
 	</properties>
@@ -121,8 +121,6 @@
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
-			<version>1.4.200</version>
-			<scope>runtime</scope>
 		</dependency>
 	</dependencies>
 
@@ -131,6 +129,11 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<image>
+						<name>eccsm/${project.artifactId}</name>
+					</image>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
