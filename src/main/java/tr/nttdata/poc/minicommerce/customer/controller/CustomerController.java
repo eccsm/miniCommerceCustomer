@@ -35,8 +35,9 @@ public class CustomerController {
     @LogObjectAfter
     @PostMapping("/login")
     public ResponseEntity<String> loginUser(@Valid @RequestBody LoginRequest loginRequest) {
+        String token = userService.authenticateUser(loginRequest);
         if (userService.authenticateUser(loginRequest) != null)
-            return ResponseEntity.ok("Login successful");
+            return ResponseEntity.ok(token);
         else
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
     }
