@@ -48,9 +48,9 @@ public class JwtTokenUtil {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(LoginRequest loginRequest) {
+    public String generateToken(String subject, long expiration) {
 
-        return Jwts.builder().setSubject(loginRequest.getEmail()).setIssuedAt(new Date(System.currentTimeMillis()))
+        return Jwts.builder().setSubject(subject).setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(SignatureAlgorithm.HS512, secret).compact();
     }

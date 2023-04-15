@@ -1,21 +1,18 @@
 package tr.nttdata.poc.minicommerce.customer.controller;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.http.HttpSession;
 import org.apache.commons.lang.UnhandledException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import tr.nttdata.poc.minicommerce.customer.annotation.LogObjectAfter;
 import tr.nttdata.poc.minicommerce.customer.annotation.LogObjectBefore;
+import tr.nttdata.poc.minicommerce.customer.email.EmailSubject;
 import tr.nttdata.poc.minicommerce.customer.exception.CustomerNotFoundException;
 import tr.nttdata.poc.minicommerce.customer.model.Customer;
 import tr.nttdata.poc.minicommerce.customer.model.ResetPasswordModel;
@@ -23,6 +20,8 @@ import tr.nttdata.poc.minicommerce.customer.model.login.JwtTokenUtil;
 import tr.nttdata.poc.minicommerce.customer.model.login.LoginRequest;
 import tr.nttdata.poc.minicommerce.customer.service.CustomerService;
 import tr.nttdata.poc.minicommerce.customer.service.UserService;
+
+import java.util.Date;
 
 @RestController
 public class CustomerController {
@@ -43,11 +42,27 @@ public class CustomerController {
     @LogObjectAfter
     @PostMapping("/login")
     public ResponseEntity<String> loginUser(@Valid @RequestBody LoginRequest loginRequest) {
-        String token = userService.authenticateUser(loginRequest);
-        if (userService.authenticateUser(loginRequest) != null)
-            return ResponseEntity.ok(token);
+        if (userService.authenticateUser(loginRequest))
+            return ResponseEntity.ok("Email send to your e-mail address.");
         else
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+    }
+
+
+    @LogObjectBefore
+    @LogObjectAfter
+    @PostMapping("/login-twofactor-auth")
+    public ResponseEntity<String> loginWith2FAUser(@Valid @RequestBody LoginRequest code) {
+        Object token = httpSession.getAttribute(code.getVerificationCode());
+        try {
+            jwtTokenUtil.extractMail(token.toString());
+        }catch (ExpiredJwtException e){
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("The verification code has timed out." + e.getMessage());
+        }
+        if (token == null)
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Could not be verified!");
+        else
+            return ResponseEntity.ok(token.toString());
     }
 
     @LogObjectBefore
@@ -61,8 +76,7 @@ public class CustomerController {
     }
 
     @GetMapping("/confirm")
-    public ResponseEntity<String> confirmUser(String token){
-
+    public ResponseEntity<String> confirmUser(@RequestParam String token) {
         if (jwtTokenUtil.isTokenExpired(token)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
@@ -94,7 +108,7 @@ public class CustomerController {
     @LogObjectBefore
     @LogObjectAfter
     @PutMapping("/{id}")
-    public void updateCustomer(@PathVariable String id,@Valid @RequestBody Customer customer) {
+    public void updateCustomer(@PathVariable String id, @Valid @RequestBody Customer customer) {
         try {
             customer.setId(id);
             customerService.updateCustomer(customer);
@@ -114,9 +128,9 @@ public class CustomerController {
     }
 
     @PostMapping("/password-reset-request")
-    public ResponseEntity<ResetPasswordModel> requestReset(@RequestBody ResetPasswordModel resetPasswordModel){
+    public ResponseEntity<ResetPasswordModel> requestReset(@RequestBody ResetPasswordModel resetPasswordModel) {
 
-        if(resetPasswordModel == null && resetPasswordModel.getEmail() == null){
+        if (resetPasswordModel == null && resetPasswordModel.getEmail() == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
 
@@ -146,9 +160,9 @@ public class CustomerController {
     }
 
     @PostMapping("/password-reset")
-    public ResponseEntity<Customer> passwordReset(@RequestBody ResetPasswordModel resetPasswordModel){
+    public ResponseEntity<Customer> passwordReset(@RequestBody ResetPasswordModel resetPasswordModel) {
 
-        if(resetPasswordModel  == null && resetPasswordModel.getEmail() == null && resetPasswordModel.getPassword() == null){
+        if (resetPasswordModel == null && resetPasswordModel.getEmail() == null && resetPasswordModel.getPassword() == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
         Customer customer = userService.passwordReset(resetPasswordModel);

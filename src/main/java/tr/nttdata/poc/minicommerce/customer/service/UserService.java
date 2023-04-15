@@ -39,33 +39,32 @@ public class UserService {
     @Resource(name = "redisTemplate")
     private HashOperations<String, Long, Customer> hashOperations;
 
-    public String authenticateUser(LoginRequest loginRequest) {
+    public boolean authenticateUser(LoginRequest loginRequest) {
         Customer customer = customerRepository.findByEmail(loginRequest.getEmail());
         if (customer != null && passwordEncoder.matches(loginRequest.getPassword(), customer.getPassword())) {
-        /*     ContainerCriteria criteria = LdapQueryBuilder.query()
+            /*ContainerCriteria criteria = LdapQueryBuilder.query()
                     .where("email").is(loginRequest.getEmail());
             Customer user = ldapTemplate.findOne(criteria, Customer.class); */
 
-       //     if (user != null) {
-              //  ldapTemplate.authenticate(criteria, loginRequest.getPassword());
-                return jwtTokenUtil.generateToken(loginRequest);
-
-         //   } else
-           //     throw new BadCredentialsException("Invalid email or password");
+            //     if (user != null) {
+            //  ldapTemplate.authenticate(criteria, loginRequest.getPassword());
+            emailSender.send(EmailSubject.TWO_FACTOR_AUTHENTICATION, customer);
+            return true;
+            //   } else
+            //     throw new BadCredentialsException("Invalid email or password");
 
         } else
-            return null;
+            return false;
     }
 
     public boolean registerUser(Customer customer) {
         if (customerRepository.findByEmail(customer.getEmail()) != null)
             throw new IllegalArgumentException("Email is already registered");
-
         try {
             customer.setPassword(passwordEncoder.encode(customer.getPassword()));
-        //    ldapTemplate.bind(LdapNameBuilder.newInstance().build(), customer, null);
+            //ldapTemplate.bind(LdapNameBuilder.newInstance().build(), customer, null);
             customerRepository.save(customer);
-            emailSender.send(EmailSubject.ACTIVATION,customer);
+            emailSender.send(EmailSubject.ACTIVATION, customer);
             return true;
         } catch (Exception ex) {
             return false;
@@ -84,11 +83,11 @@ public class UserService {
         }
     }
 
-    public ResetPasswordModel requestPasswordReset(String email){
+    public ResetPasswordModel requestPasswordReset(String email) {
 
         ResetPasswordModel resetPasswordModel = new ResetPasswordModel();
         Customer customer = customerRepository.findByEmail(email);
-        if(customer == null){
+        if (customer == null) {
             return resetPasswordModel;
         }
         resetPasswordModel.setEmail(email);
@@ -96,21 +95,21 @@ public class UserService {
         loginRequest.setEmail(customer.getEmail());
 
         try {
-            String token = emailSender.send(EmailSubject.RESET_PASSWORD,customer);
+            String token = emailSender.send(EmailSubject.RESET_PASSWORD, customer);
             resetPasswordModel.setToken(token);
             resetPasswordModel.setMessage("Mail başarıyla gönderildi.");
 
-        }catch (Exception e){
+        } catch (Exception e) {
             resetPasswordModel.setMessage("Gönderilirken bir hata oluştu.");
         }
 
         return resetPasswordModel;
     }
 
-    public Customer passwordReset(ResetPasswordModel resetPasswordModel){
+    public Customer passwordReset(ResetPasswordModel resetPasswordModel) {
 
         Customer customer = customerRepository.findByEmail(resetPasswordModel.getEmail());
-        if(customer == null){
+        if (customer == null) {
             return customer;
         }
         customerRepository.update(customer);
@@ -118,9 +117,7 @@ public class UserService {
         return customer;
     }
 
-    public void logout(HttpServletRequest request,
-            HttpServletResponse response,
-            Authentication authentication) {
-    //    logoutHandler.logout(request, response, authentication);
+    public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
+        //    logoutHandler.logout(request, response, authentication);
     }
 }

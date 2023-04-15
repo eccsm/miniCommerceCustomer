@@ -4,15 +4,14 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
-import lombok.AllArgsConstructor;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import tr.nttdata.poc.minicommerce.customer.model.Customer;
+import tr.nttdata.poc.minicommerce.customer.model.login.JwtTokenUtil;
 
 import java.util.Date;
 import java.util.Random;
@@ -22,22 +21,26 @@ import java.util.Random;
 public class EmailService implements IEmailSender {
 
     @Autowired
+    private HttpSession httpSession;
+    @Autowired
     private JavaMailSender mailSender;
-
+    @Autowired
+    private JwtTokenUtil jwtTokenUtil;
     @Value("${jwt.secret}")
     private String jwtSecret;
+
     @Override
     public String send(EmailSubject subject, Customer customer) {
 
         try {
-            String token = generateJwtToken(customer);
+            String token = jwtTokenUtil.generateToken(customer.getEmail(), 120 * 1000);
             String link = setLinkBySubject(subject, token);
-            String body = setBodyBySubject(subject,customer.getFirstName(),link);
+            String body = setBodyBySubject(subject, customer.getFirstName(), link);
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage,"utf-8");
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, "utf-8");
             mimeMessageHelper.setSubject(subject.toString());
-            mimeMessageHelper.setText(body,true);
+            mimeMessageHelper.setText(body, true);
             mimeMessageHelper.setTo(customer.getEmail());
             mimeMessageHelper.setFrom("klcarf@gmail.com");
 
@@ -48,17 +51,6 @@ public class EmailService implements IEmailSender {
         }
     }
 
-    private String generateJwtToken(Customer customer) {
-        int jwtExpiration = 120;
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + jwtExpiration * 1000);
-        return Jwts.builder()
-                .setSubject(customer.getId())
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .signWith(SignatureAlgorithm.HS512, jwtSecret)
-                .compact();
-    }
     private String setLinkBySubject(EmailSubject emailSubject, String token) {
         switch (emailSubject) {
             case ACTIVATION -> {
@@ -68,29 +60,33 @@ public class EmailService implements IEmailSender {
                 return "http://localhost:8080/api/password-reset-request?token=" + token;
             }
             case TWO_FACTOR_AUTHENTICATION -> {
-                return generateVerificationCode();
+                String code = generateVerificationCode();
+                httpSession.setAttribute(code,token);
+                return code;
             }
             default -> {
                 return "";
             }
         }
     }
-    private String setBodyBySubject(EmailSubject emailSubject, String name, String body){
+
+    private String setBodyBySubject(EmailSubject emailSubject, String name, String body) {
         switch (emailSubject) {
             case ACTIVATION -> {
-                return sendRegistrationEmail(name,body);
+                return sendRegistrationEmail(name, body);
             }
             case RESET_PASSWORD -> {
-                return generatePasswordResetEmailHtml(name,body);
+                return generatePasswordResetEmailHtml(name, body);
             }
             case TWO_FACTOR_AUTHENTICATION -> {
-                return sendVerificationCodeEmail(name,body);
+                return sendVerificationCodeEmail(name, body);
             }
             default -> {
                 return "";
             }
         }
     }
+
     private String sendVerificationCodeEmail(String name, String verificationCode) {
         String username = name;
         String company = "Ntt ecommerce";
@@ -108,6 +104,7 @@ public class EmailService implements IEmailSender {
 
         return htmlBody;
     }
+
     private String sendRegistrationEmail(String name, String link) {
         String registrationLink = link;
 
@@ -120,6 +117,7 @@ public class EmailService implements IEmailSender {
         return htmlBody;
         // Send the email using your preferred email sending library, e.g. JavaMail
     }
+
     private String generatePasswordResetEmailHtml(String customerName, String resetLink) {
         String companyName = "Ntt ecommerce";
         String htmlBody = "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Password Reset Request</title></head><body><p>Dear " + customerName + "," +
@@ -128,6 +126,7 @@ public class EmailService implements IEmailSender {
 
         return htmlBody;
     }
+
     public static String generateVerificationCode() {
         Random random = new Random();
         int codeValue = 100000 + random.nextInt(900000); // generates a random integer between 100000 and 999999
