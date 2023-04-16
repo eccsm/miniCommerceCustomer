@@ -48,7 +48,7 @@ public class UserService {
 
             //     if (user != null) {
             //  ldapTemplate.authenticate(criteria, loginRequest.getPassword());
-            emailSender.send(EmailSubject.TWO_FACTOR_AUTHENTICATION, customer);
+            //emailSender.send(EmailSubject.TWO_FACTOR_AUTHENTICATION, customer);
             return true;
             //   } else
             //     throw new BadCredentialsException("Invalid email or password");
@@ -64,7 +64,7 @@ public class UserService {
             customer.setPassword(passwordEncoder.encode(customer.getPassword()));
             //ldapTemplate.bind(LdapNameBuilder.newInstance().build(), customer, null);
             customerRepository.save(customer);
-            emailSender.send(EmailSubject.ACTIVATION, customer);
+            //emailSender.send(EmailSubject.ACTIVATION, customer);
             return true;
         } catch (Exception ex) {
             return false;
@@ -95,7 +95,8 @@ public class UserService {
         loginRequest.setEmail(customer.getEmail());
 
         try {
-            String token = emailSender.send(EmailSubject.RESET_PASSWORD, customer);
+            String token = "";
+            // token = emailSender.send(EmailSubject.RESET_PASSWORD, customer);
             resetPasswordModel.setToken(token);
             resetPasswordModel.setMessage("Mail başarıyla gönderildi.");
 
