@@ -31,7 +31,7 @@ public class Customer implements Serializable {
     private String password;
     @DateTimeFormat
     private Date dateOfBirth;
-    @Pattern(regexp = "^0905\\d{9}$", message = "Invalid Turkish phone number")
+    @Pattern(regexp = "^5\\d{9}$", message = "Invalid Turkish phone number")
     private String mobile;
 
 }

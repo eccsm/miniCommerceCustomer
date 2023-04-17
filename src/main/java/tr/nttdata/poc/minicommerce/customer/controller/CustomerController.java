@@ -18,25 +18,29 @@ import tr.nttdata.poc.minicommerce.customer.model.Customer;
 import tr.nttdata.poc.minicommerce.customer.model.ResetPasswordModel;
 import tr.nttdata.poc.minicommerce.customer.model.login.JwtTokenUtil;
 import tr.nttdata.poc.minicommerce.customer.model.login.LoginRequest;
+import tr.nttdata.poc.minicommerce.customer.repository.ActivationCodeRepository;
+import tr.nttdata.poc.minicommerce.customer.repository.PasswordResetRepository;
+import tr.nttdata.poc.minicommerce.customer.repository.TemporaryCustomerRepository;
 import tr.nttdata.poc.minicommerce.customer.service.CustomerService;
 import tr.nttdata.poc.minicommerce.customer.service.UserService;
 
 import java.util.Date;
 
 @RestController
+@CrossOrigin
 public class CustomerController {
-
     @Autowired
     private CustomerService customerService;
-
     @Autowired
     private UserService userService;
-
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
-
     @Autowired
-    private HttpSession httpSession;
+    private ActivationCodeRepository activationCodeRepository;
+    @Autowired
+    private PasswordResetRepository passwordResetRepository;
+    @Autowired
+    private TemporaryCustomerRepository temporaryCustomerRepository;
 
     @LogObjectBefore
     @LogObjectAfter
@@ -53,9 +57,9 @@ public class CustomerController {
     @LogObjectAfter
     @PostMapping("/login-twofactor-auth")
     public ResponseEntity<String> loginWith2FAUser(@Valid @RequestBody LoginRequest code) {
-        Object token = httpSession.getAttribute(code.getVerificationCode());
+        String token = activationCodeRepository.findByActivationCode(code.getVerificationCode());
         try {
-            jwtTokenUtil.extractMail(token.toString());
+            String result = jwtTokenUtil.extractMail(token.toString());
         }catch (ExpiredJwtException e){
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("The verification code has timed out." + e.getMessage());
         }
@@ -78,10 +82,11 @@ public class CustomerController {
     @GetMapping("/confirm")
     public ResponseEntity<String> confirmUser(@RequestParam String token) {
         if (jwtTokenUtil.isTokenExpired(token)) {
+            temporaryCustomerRepository.deleteByToken(token);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
-        String userName = jwtTokenUtil.extractMail(token);
-        String result = userService.confirm(userName);
+
+        String result = userService.confirm(token);
         return ResponseEntity.ok(result);
     }
 
@@ -138,12 +143,12 @@ public class CustomerController {
         if (resetPasswordModel == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
-        httpSession.setAttribute(resetPasswordModel.getToken(), resetPasswordModel.getEmail());
+        passwordResetRepository.save(resetPasswordModel.getToken(), resetPasswordModel.getEmail());
         return ResponseEntity.ok(resetPasswordModel);
     }
 
-    @GetMapping("/password-reset-request")
-    public ResponseEntity<ResetPasswordModel> requestReset(String token) {
+    @GetMapping("/password-reset-request/{token}")
+    public ResponseEntity<ResetPasswordModel> requestReset(@PathVariable String token) {
 
         ResetPasswordModel resetPasswordModel = new ResetPasswordModel();
         if (token == null || token == "") {
@@ -153,7 +158,8 @@ public class CustomerController {
         if (jwtTokenUtil.isTokenExpired(token)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
-        resetPasswordModel.setEmail((String) httpSession.getAttribute(token));
+
+        resetPasswordModel.setEmail(passwordResetRepository.findByToken(token));
         resetPasswordModel.setToken(token);
 
         return ResponseEntity.ok(resetPasswordModel);
@@ -162,7 +168,7 @@ public class CustomerController {
     @PostMapping("/password-reset")
     public ResponseEntity<Customer> passwordReset(@RequestBody ResetPasswordModel resetPasswordModel) {
 
-        if (resetPasswordModel == null && resetPasswordModel.getEmail() == null && resetPasswordModel.getPassword() == null) {
+        if (resetPasswordModel == null || resetPasswordModel.getEmail() == null || resetPasswordModel.getPassword() == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
         Customer customer = userService.passwordReset(resetPasswordModel);

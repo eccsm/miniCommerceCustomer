@@ -12,6 +12,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import tr.nttdata.poc.minicommerce.customer.model.Customer;
 import tr.nttdata.poc.minicommerce.customer.model.login.JwtTokenUtil;
+import tr.nttdata.poc.minicommerce.customer.repository.ActivationCodeRepository;
 
 import java.util.Date;
 import java.util.Random;
@@ -21,6 +22,8 @@ import java.util.Random;
 public class EmailService implements IEmailSender {
 
     @Autowired
+    ActivationCodeRepository activationCodeRepository;
+    @Autowired
     private HttpSession httpSession;
     @Autowired
     private JavaMailSender mailSender;
@@ -28,6 +31,8 @@ public class EmailService implements IEmailSender {
     private JwtTokenUtil jwtTokenUtil;
     @Value("${jwt.secret}")
     private String jwtSecret;
+    @Value("spring.mail.username")
+    private String mailFrom;
 
     @Override
     public String send(EmailSubject subject, Customer customer) {
@@ -42,7 +47,7 @@ public class EmailService implements IEmailSender {
             mimeMessageHelper.setSubject(subject.toString());
             mimeMessageHelper.setText(body, true);
             mimeMessageHelper.setTo(customer.getEmail());
-            mimeMessageHelper.setFrom("klcarf@gmail.com");
+            mimeMessageHelper.setFrom(mailFrom);
 
             mailSender.send(mimeMessage);
             return token;
@@ -54,14 +59,15 @@ public class EmailService implements IEmailSender {
     private String setLinkBySubject(EmailSubject emailSubject, String token) {
         switch (emailSubject) {
             case ACTIVATION -> {
-                return "http://localhost:8080/api/confirm?token=" + token;
+//                return "http://localhost:8080/api/confirm?token=" + token;
+                return "http://localhost:3000/#/signup-status/" + token;
             }
             case RESET_PASSWORD -> {
-                return "http://localhost:8080/api/password-reset-request?token=" + token;
+                return "http://localhost:3000/#/reset-password/" + token;
             }
             case TWO_FACTOR_AUTHENTICATION -> {
                 String code = generateVerificationCode();
-                httpSession.setAttribute(code,token);
+                activationCodeRepository.save(code, token);
                 return code;
             }
             default -> {

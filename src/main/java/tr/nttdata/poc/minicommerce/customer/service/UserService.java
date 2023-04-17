@@ -1,13 +1,11 @@
 package tr.nttdata.poc.minicommerce.customer.service;
 
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.CacheManager;
-import org.springframework.data.redis.core.HashOperations;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import tr.nttdata.poc.minicommerce.customer.email.EmailSubject;
@@ -17,6 +15,7 @@ import tr.nttdata.poc.minicommerce.customer.model.ResetPasswordModel;
 import tr.nttdata.poc.minicommerce.customer.model.login.JwtTokenUtil;
 import tr.nttdata.poc.minicommerce.customer.model.login.LoginRequest;
 import tr.nttdata.poc.minicommerce.customer.repository.CustomerRepository;
+import tr.nttdata.poc.minicommerce.customer.repository.TemporaryCustomerRepository;
 
 @Service
 public class UserService {
@@ -29,15 +28,14 @@ public class UserService {
 
     @Autowired
     private CustomerRepository customerRepository;
+    @Autowired
+    private TemporaryCustomerRepository temporaryCustomerRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
     private IEmailSender emailSender;
-
-    @Resource(name = "redisTemplate")
-    private HashOperations<String, Long, Customer> hashOperations;
 
     public boolean authenticateUser(LoginRequest loginRequest) {
         Customer customer = customerRepository.findByEmail(loginRequest.getEmail());
@@ -49,6 +47,7 @@ public class UserService {
             //     if (user != null) {
             //  ldapTemplate.authenticate(criteria, loginRequest.getPassword());
             //emailSender.send(EmailSubject.TWO_FACTOR_AUTHENTICATION, customer);
+            String token = emailSender.send(EmailSubject.TWO_FACTOR_AUTHENTICATION, customer);
             return true;
             //   } else
             //     throw new BadCredentialsException("Invalid email or password");
@@ -63,19 +62,20 @@ public class UserService {
         try {
             customer.setPassword(passwordEncoder.encode(customer.getPassword()));
             //ldapTemplate.bind(LdapNameBuilder.newInstance().build(), customer, null);
+            String token = emailSender.send(EmailSubject.ACTIVATION, customer);
+            temporaryCustomerRepository.save(token, customer);
+            //TODO remove this line when confirm implemented
             customerRepository.save(customer);
-            //emailSender.send(EmailSubject.ACTIVATION, customer);
             return true;
         } catch (Exception ex) {
             return false;
         }
     }
 
-    public String confirm(String email) {
+    public String confirm(String token) {
         try {
-            Customer customer = customerRepository.findByEmail(email);
-            //customer.setActive(true);
-            customerRepository.update(customer);
+            Customer customer = temporaryCustomerRepository.findByToken(token);
+            customerRepository.save(customer);
 
             return "Update confirmed for user with email address: " + customer.getEmail();
         } catch (Exception e) {
@@ -91,12 +91,9 @@ public class UserService {
             return resetPasswordModel;
         }
         resetPasswordModel.setEmail(email);
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setEmail(customer.getEmail());
 
         try {
-            String token = "";
-            // token = emailSender.send(EmailSubject.RESET_PASSWORD, customer);
+            String token = emailSender.send(EmailSubject.RESET_PASSWORD, customer);
             resetPasswordModel.setToken(token);
             resetPasswordModel.setMessage("Mail başarıyla gönderildi.");
 
@@ -110,6 +107,7 @@ public class UserService {
     public Customer passwordReset(ResetPasswordModel resetPasswordModel) {
 
         Customer customer = customerRepository.findByEmail(resetPasswordModel.getEmail());
+        customer.setPassword(passwordEncoder.encode(resetPasswordModel.getPassword()));
         if (customer == null) {
             return customer;
         }
