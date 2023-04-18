@@ -1,21 +1,18 @@
 package tr.nttdata.poc.minicommerce.customer.controller;
 
 import io.jsonwebtoken.ExpiredJwtException;
-import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import org.apache.commons.lang.UnhandledException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import jakarta.validation.Valid;
 import tr.nttdata.poc.minicommerce.customer.annotation.LogObjectAfter;
 import tr.nttdata.poc.minicommerce.customer.annotation.LogObjectBefore;
-import tr.nttdata.poc.minicommerce.customer.email.EmailSubject;
 import tr.nttdata.poc.minicommerce.customer.exception.CustomerNotFoundException;
 import tr.nttdata.poc.minicommerce.customer.model.Customer;
 import tr.nttdata.poc.minicommerce.customer.model.ResetPasswordModel;
+import tr.nttdata.poc.minicommerce.customer.model.Token;
 import tr.nttdata.poc.minicommerce.customer.model.login.JwtTokenUtil;
 import tr.nttdata.poc.minicommerce.customer.model.login.LoginRequest;
 import tr.nttdata.poc.minicommerce.customer.repository.ActivationCodeRepository;
@@ -24,10 +21,7 @@ import tr.nttdata.poc.minicommerce.customer.repository.TemporaryCustomerReposito
 import tr.nttdata.poc.minicommerce.customer.service.CustomerService;
 import tr.nttdata.poc.minicommerce.customer.service.UserService;
 
-import java.util.Date;
-
 @RestController
-@CrossOrigin
 public class CustomerController {
     @Autowired
     private CustomerService customerService;
@@ -56,17 +50,19 @@ public class CustomerController {
     @LogObjectBefore
     @LogObjectAfter
     @PostMapping("/login-twofactor-auth")
-    public ResponseEntity<String> loginWith2FAUser(@Valid @RequestBody LoginRequest code) {
+    public ResponseEntity<Token> loginWith2FAUser(@Valid @RequestBody LoginRequest code) {
         String token = activationCodeRepository.findByActivationCode(code.getVerificationCode());
+        String newToken = null;
         try {
             String result = jwtTokenUtil.extractMail(token.toString());
-        }catch (ExpiredJwtException e){
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("The verification code has timed out." + e.getMessage());
+            newToken = jwtTokenUtil.generateToken(result, 2 * 60 * 60 * 1000);
+        }catch (ExpiredJwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
         }
         if (token == null)
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Could not be verified!");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
         else
-            return ResponseEntity.ok(token.toString());
+            return ResponseEntity.ok(new Token(newToken));
     }
 
     @LogObjectBefore
@@ -80,14 +76,14 @@ public class CustomerController {
     }
 
     @GetMapping("/confirm")
-    public ResponseEntity<String> confirmUser(@RequestParam String token) {
+    public ResponseEntity<Token> confirmUser(@RequestParam String token) {
         if (jwtTokenUtil.isTokenExpired(token)) {
             temporaryCustomerRepository.deleteByToken(token);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
 
-        String result = userService.confirm(token);
-        return ResponseEntity.ok(result);
+        String newToken = userService.confirm(token);
+        return ResponseEntity.ok(new Token(newToken));
     }
 
     @GetMapping("/{id}")

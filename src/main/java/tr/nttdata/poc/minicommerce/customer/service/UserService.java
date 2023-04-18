@@ -64,8 +64,6 @@ public class UserService {
             //ldapTemplate.bind(LdapNameBuilder.newInstance().build(), customer, null);
             String token = emailSender.send(EmailSubject.ACTIVATION, customer);
             temporaryCustomerRepository.save(token, customer);
-            //TODO remove this line when confirm implemented
-            customerRepository.save(customer);
             return true;
         } catch (Exception ex) {
             return false;
@@ -76,8 +74,9 @@ public class UserService {
         try {
             Customer customer = temporaryCustomerRepository.findByToken(token);
             customerRepository.save(customer);
+            temporaryCustomerRepository.deleteByToken(token);
 
-            return "Update confirmed for user with email address: " + customer.getEmail();
+            return jwtTokenUtil.generateToken(customer.getEmail(), 120 * 60 * 1000);
         } catch (Exception e) {
             return "User not found";
         }
