@@ -6,8 +6,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import java.util.Date;
 import java.io.*;
 
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -19,7 +17,6 @@ import lombok.*;
 @RedisHash("customers")
 public class Customer implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
     private String id;
     @NotBlank(message = "firstName is mandatory")
     private String firstName;

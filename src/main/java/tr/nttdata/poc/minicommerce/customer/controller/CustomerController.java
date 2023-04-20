@@ -2,7 +2,6 @@ package tr.nttdata.poc.minicommerce.customer.controller;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.validation.Valid;
-import org.apache.commons.lang.UnhandledException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,10 +39,14 @@ public class CustomerController {
     @LogObjectAfter
     @PostMapping("/login")
     public ResponseEntity<String> loginUser(@Valid @RequestBody LoginRequest loginRequest) {
-        if (userService.authenticateUser(loginRequest))
-            return ResponseEntity.ok("Email send to your e-mail address.");
-        else
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+        try {
+            if (userService.authenticateUser(loginRequest))
+                return ResponseEntity.ok("Email send to your e-mail address.");
+            else
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid email or password");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+        }
     }
 
 
@@ -106,28 +109,6 @@ public class CustomerController {
         }
     }
 
-    @LogObjectBefore
-    @LogObjectAfter
-    @PutMapping("/{id}")
-    public void updateCustomer(@PathVariable String id, @Valid @RequestBody Customer customer) {
-        try {
-            customer.setId(id);
-            customerService.updateCustomer(customer);
-        } catch (CustomerNotFoundException | IllegalArgumentException e) {
-            throw new UnhandledException("Unknown Exception", e);
-        }
-    }
-
-    @LogObjectBefore
-    @DeleteMapping("/{id}")
-    public void deleteCustomer(@PathVariable String id) {
-        try {
-            customerService.deleteCustomerById(id);
-        } catch (CustomerNotFoundException e) {
-            throw new UnhandledException("Unknown Exception", e);
-        }
-    }
-
     @PostMapping("/password-reset-request")
     public ResponseEntity<ResetPasswordModel> requestReset(@RequestBody ResetPasswordModel resetPasswordModel) {
 
@@ -164,9 +145,10 @@ public class CustomerController {
     @PostMapping("/password-reset")
     public ResponseEntity<Customer> passwordReset(@RequestBody ResetPasswordModel resetPasswordModel) {
 
-        if (resetPasswordModel == null || resetPasswordModel.getEmail() == null || resetPasswordModel.getPassword() == null) {
+        if (resetPasswordModel == null || resetPasswordModel.getToken() == null || resetPasswordModel.getPassword() == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
+        resetPasswordModel.setEmail(jwtTokenUtil.extractMail(resetPasswordModel.getToken()));
         Customer customer = userService.passwordReset(resetPasswordModel);
         return ResponseEntity.ok(customer);
     }

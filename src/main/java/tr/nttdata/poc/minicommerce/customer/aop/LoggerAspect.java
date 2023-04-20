@@ -7,7 +7,6 @@ import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
-import org.hibernate.boot.model.CustomSql;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
@@ -22,7 +21,7 @@ public class LoggerAspect {
     public void logSportsIconBefore(JoinPoint joinPoint) {
         Object[] args = joinPoint.getArgs();
         for (Object arg : args) {
-            if (arg instanceof CustomSql) {
+            if (arg instanceof Customer) {
                 Customer customer = (Customer) arg;
                 log.info("******* Customer Service :: {}", customer);
             }

@@ -60,10 +60,10 @@ public class EmailService implements IEmailSender {
         switch (emailSubject) {
             case ACTIVATION -> {
 //                return "http://localhost:8080/api/confirm?token=" + token;
-                return "http://localhost:3000/#/signup-status/" + token;
+                return "http://34.118.55.146:3000/#/signup-status/" + token;
             }
             case RESET_PASSWORD -> {
-                return "http://localhost:3000/#/reset-password/" + token;
+                return "http://34.118.55.146:3000/#/reset-password/" + token;
             }
             case TWO_FACTOR_AUTHENTICATION -> {
                 String code = generateVerificationCode();
