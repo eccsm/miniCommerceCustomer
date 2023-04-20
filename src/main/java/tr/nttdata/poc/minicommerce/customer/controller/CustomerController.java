@@ -89,16 +89,6 @@ public class CustomerController {
         return ResponseEntity.ok(new Token(newToken));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Customer> getCustomerById(@PathVariable String id) {
-        try {
-            Customer returned = customerService.getCustomerById(id);
-            return ResponseEntity.ok(returned);
-        } catch (CustomerNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
-        }
-    }
-
     @GetMapping("/email/{email}")
     public ResponseEntity<Customer> getCustomerByEmail(@PathVariable String email) {
         try {

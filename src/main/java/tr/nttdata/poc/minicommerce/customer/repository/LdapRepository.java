@@ -1,38 +1,33 @@
 package tr.nttdata.poc.minicommerce.customer.repository;
 
-import java.util.List;
-import java.util.UUID;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.ldap.core.AttributesMapper;
 import org.springframework.ldap.core.DirContextAdapter;
 import org.springframework.ldap.core.DirContextOperations;
 import org.springframework.ldap.core.LdapTemplate;
 import org.springframework.ldap.support.LdapNameBuilder;
 import org.springframework.stereotype.Repository;
-
 import tr.nttdata.poc.minicommerce.customer.model.Customer;
 
 import javax.naming.Name;
 import javax.naming.NamingException;
 import javax.naming.directory.Attributes;
+import java.util.List;
 
 import static org.springframework.ldap.query.LdapQueryBuilder.query;
 
 @Repository
-public class CustomerRepository {
+public class LdapRepository {
 
     @Autowired
     private LdapTemplate ldapTemplate;
 
-    public Customer findByEmail(String email) {
-        List<Customer> people = ldapTemplate.search(query().where("uid").is(email), new CustomerRepository.CustomerAttributesMapper());
+    public Customer getCustomerByEmail(String email) {
+        List<Customer> people = ldapTemplate.search(query().where("uid").is(email), new CustomerAttributesMapper());
         return ((null != people && !people.isEmpty()) ? people.get(0) : null);
     }
 
-    public void save(Customer customer) {
+    public void addCustomer(Customer customer) {
 
         Name dn = LdapNameBuilder
                 .newInstance()
@@ -57,7 +52,7 @@ public class CustomerRepository {
 
     public void changePassword(String username, String oldPassword, String newPassword) {
 
-//        authenticate(username,oldPassword);
+        authenticate(username,oldPassword);
 
         Name dn = LdapNameBuilder.newInstance()
                 .add("cn", username)
@@ -72,14 +67,14 @@ public class CustomerRepository {
         ldapTemplate.modifyAttributes(context);
     }
 
-    public Customer authenticate(String username, String password) {
+    public boolean authenticate(String username, String password) {
         try {
             ldapTemplate.authenticate(query().where("uid").is(username), password);
-            return findByEmail(username);
         } catch (Exception e) {
+            return false;
         }
-        return null;
-    }
+        return true;
+     }
 
     private class CustomerAttributesMapper implements AttributesMapper<Customer> {
         public Customer mapFromAttributes(Attributes attrs) throws NamingException {

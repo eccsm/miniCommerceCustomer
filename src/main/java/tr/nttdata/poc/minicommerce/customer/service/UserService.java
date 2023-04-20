@@ -38,8 +38,9 @@ public class UserService {
     private IEmailSender emailSender;
 
     public boolean authenticateUser(LoginRequest loginRequest) {
-        Customer customer = customerRepository.findByEmail(loginRequest.getEmail());
-        if (customer != null && passwordEncoder.matches(loginRequest.getPassword(), customer.getPassword())) {
+
+        Customer customer = customerRepository.authenticate(loginRequest.getEmail(), loginRequest.getPassword());
+        if (customer != null) {
             /*ContainerCriteria criteria = LdapQueryBuilder.query()
                     .where("email").is(loginRequest.getEmail());
             Customer user = ldapTemplate.findOne(criteria, Customer.class); */
@@ -60,7 +61,7 @@ public class UserService {
         if (customerRepository.findByEmail(customer.getEmail()) != null)
             throw new IllegalArgumentException("Email is already registered");
         try {
-            customer.setPassword(passwordEncoder.encode(customer.getPassword()));
+            customer.setPassword(customer.getPassword());
             //ldapTemplate.bind(LdapNameBuilder.newInstance().build(), customer, null);
             String token = emailSender.send(EmailSubject.ACTIVATION, customer);
             temporaryCustomerRepository.save(token, customer);
@@ -106,11 +107,11 @@ public class UserService {
     public Customer passwordReset(ResetPasswordModel resetPasswordModel) {
 
         Customer customer = customerRepository.findByEmail(resetPasswordModel.getEmail());
-        customer.setPassword(passwordEncoder.encode(resetPasswordModel.getPassword()));
+        customer.setPassword(resetPasswordModel.getPassword());
         if (customer == null) {
             return customer;
         }
-        customerRepository.update(customer);
+        customerRepository.changePassword(customer.getEmail(), "", customer.getPassword());
 
         return customer;
     }

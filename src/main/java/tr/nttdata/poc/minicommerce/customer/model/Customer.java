@@ -14,10 +14,8 @@ import lombok.*;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@RedisHash("customers")
 public class Customer implements Serializable {
-    @Id
-    private String id;
+
     @NotBlank(message = "firstName is mandatory")
     private String firstName;
     @NotBlank(message = "lastName is mandatory")

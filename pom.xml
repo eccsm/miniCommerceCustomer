@@ -11,7 +11,7 @@
 	</parent>
 	<groupId>tr.nttdata.poc.minicommerce.customer</groupId>
 	<artifactId>customerservice</artifactId>
-	<version>0.0.7-SNAPSHOT</version>
+	<version>1.0</version>
 	<name>customerservice</name>
 	<description>Customer Service MiniCommerce</description>
 	<properties>
@@ -89,6 +89,18 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<version>3.0.5</version>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-ldap</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.unboundid</groupId>
+			<artifactId>unboundid-ldapsdk</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.ldap</groupId>
+			<artifactId>spring-ldap-core</artifactId>
 		</dependency>
 	</dependencies>
 
